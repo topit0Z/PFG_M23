@@ -26,17 +26,17 @@ function escanearMAC {
 	tmp_file=./tmp.txt
 	result_file=./macs.txt
 	
-	if [ -f $result_file ]; then
-		rm -f $result_file
-	fi
+	[ -f $result_file ] && rm -f $result_file #Borramos el fichero de resultados para no duplicar direcciones MAC
 	
-	(sudo tcpdump -qtel broadcast and port bootpc > $tmp_file 2>/dev/null)&
+	(sudo tcpdump -qtel broadcast and port bootpc > $tmp_file 2>/dev/null)& #Analizamos el tráfico de red en busca de arranques PXE
 	whiptail --title "$TITULO" --msgbox "Escaneando direcciones MAC...\nPulse aceptar para terminar." 10 70
 	sudo killall tcpdump
 	(perl -ane 'print "\U$F[0]\n"' $tmp_file|sort|uniq) > $result_file
 	sed -i '/^$/d' $result_file
 	rm -f $tmp_file
-	if [ ! -s $result_file ]; then
+	
+	
+	if [ -s $result_file ]; then
       		# The file is not-empty.
 		whiptail --title "$TITULO - Direcciones MAC encontradas:" --textbox $result_file 7 70	
 	else
