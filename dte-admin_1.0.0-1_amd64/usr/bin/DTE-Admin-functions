@@ -1,0 +1,245 @@
+#!/bin/bash
+#
+# En este fichero se encuentran todas las funciones de las que hacen uso
+# los scripts que componen el DTE-Admin
+#
+
+### Funciones auxiliares para el manejo de los diálogos whiptail ###
+# 
+function _confirmacion {
+
+	whiptail --title "$TITULO" \
+	--yesno "$1" 10 78
+}
+
+function _info {
+
+	local term_tmp="$TERM"
+	
+	local term=ansi #Debemos cambiar temporalmente el tipo de Terminal debido a un bug de whiptail infobox con xterm
+	
+	txt="$1"
+	
+	whiptail --title "$TITULO" \
+	--infobox "$txt" 10 70
+	
+	#term="$term_temp"
+}
+
+function _leer_fichero {
+
+	local subtitulo="$1"
+	local fichero="$2"
+
+	whiptail --title "$TITULO - $subtitulo" \
+	--textbox "$fichero" 7 70 \
+	-scrolltext
+}
+
+function _mensaje {
+
+	local msg="$1"
+	
+	whiptail --title "$TITULO" \
+	--msgbox "$msg" \
+	10 70
+}
+
+function _formulario {
+
+	local pregunta="$1"
+	local default="$2"
+
+	local respuesta=$(whiptail --title "$TITULO" \
+                     --inputbox "$pregunta" 10 70 "$default" \
+                     3>&1 1>&2 2>&3)
+                     
+        echo $respuesta
+}
+
+##########
+
+### Funciones generales ###
+
+
+function make_backups {
+
+	cp -f /etc/default/grub /etc/default/grub.dte_bak
+	cp -f /etc/network/interfaces /etc/network/interfaces.dte_bak
+}
+
+function _restore_network {
+	mv /etc/network/interfaces.dte_bak /etc/network/interfaces
+	systemctl restart networking
+
+}
+
+function _restore_grub {
+	mv /etc/default/grub.dte_bak /etc/default/grub
+	grub-mkconfig -o /boot/grub/grub.cfg
+}
+
+function restore_backups {
+
+	_restore_network
+	_restore_grub
+}
+
+function instalar_m23 {
+
+	# Si no existe la clave del repositorio APT de M23, la añadimos
+	(apt-key list 2> /dev/null | grep "Hauke Goos-Habermann" &> /dev/null) || (wget -T1 -t1 -q http://m23.sourceforge.net/m23-Sign-Key.asc -O - | apt-key add -)
+	
+	# Si no existe el repositorio de M23 en los sources de APT, lo añadimos
+	[ -f /etc/apt/sources.list.d/m23.list ] || echo 'deb http://m23inst.goos-habermann.de ./' > /etc/apt/sources.list.d/m23.list
+	
+	#Actualizamos la base de datos de APT
+	apt update
+	
+	export DEBIAN_FRONTEND=noninteractive
+	
+	#Instalamos M23 y sus dependencias
+	apt install -y m23
+	
+	export DEBIAN_FRONTEND=""
+	
+	_mensaje "La instalación de m23 ha finalizado."
+	
+	#¿Donde metemos el dpkg-reconfigure?
+}
+
+# Escanea la red de área local en busca de clientes 
+# que trate de realizar un arranque PXE
+# y almacena sus direcciones MAC en el fichero $result_file
+function escanear_MAC {
+
+	if [[ $(ip link show eth0 &> /dev/null) ]]; then
+
+		local tmp_file=/tmp/macs_tmp.txt
+		
+		local result_file=/tmp/macs.txt
+		
+		local result_file=$(_formulario "Indique el fichero dónde guardar los resultados:" "$HOME/mac.list" ) #Acabar esta mierda
+		
+		[ -f "$result_file" ] && rm -f $result_file #Borramos el fichero de resultados para no duplicar direcciones MAC
+		
+		(tcpdump -i eth0 -qtel broadcast and port bootpc > $tmp_file 2>/dev/null)& #Analizamos el tráfico de red en busca de arranques PXE
+		_mensaje "Escaneando direcciones MAC...\nPulse aceptar para terminar."
+		sudo killall tcpdump
+		(perl -ane 'print "\U$F[0]\n"' $tmp_file|sort|uniq) > $result_file
+		sed -i '/^$/d' $result_file
+		rm -f $tmp_file
+		
+		if [ -s "$result_file" ]; then
+	      		# The file is not-empty.
+			_leer_fichero "Direcciones MAC encontradas:" $result_file
+			_mensaje "Las direcciones MAC se han guardado en $result_file"
+		else
+			# The file is empty.
+			_mensaje "No se han encontrado clientes."
+		fi
+	else
+		_mensaje "¡Error! Debe configurar las interfaces de red antes de escanear direcciones MAC."
+	fi
+}
+
+
+function get_nombrado_interfaces {
+
+	local if_type=""
+
+	cat /etc/default/grub | grep "net.ifnames=0 biosdevname=0" > /dev/null && if_type="Clásico (ethX)" || if_type="Normal (enpXsY, enoX, ...)"
+	
+	[ "$1" = "show" ] && _mensaje "El nombrado actual de las interfaces de red es:\n$if_type"
+	
+	echo $if_type
+}
+
+set_dhcp_red(){
+
+    echo ""  >> "$INTERFACES_FILE"
+    echo "allow-hotplug eth1" >> "$INTERFACES_FILE"
+    echo "iface eth1 inet dhcp" >> "$INTERFACES_FILE"    
+}
+
+
+set_static_red(){
+
+    # set_static_red IP SUBNET GATEWAY
+    echo "auto lo" > "$INTERFACES_FILE"
+    echo "iface lo inet loopback" >> "$INTERFACES_FILE"
+    echo ""  >> "$INTERFACES_FILE"
+    echo "auto eth0" >> "$INTERFACES_FILE"
+    echo "iface eth0 inet static" >> "$INTERFACES_FILE"
+    echo "  address $1" >> "$INTERFACES_FILE"
+    echo "  netmask $2" >> "$INTERFACES_FILE"
+    #--> En nuestra arquitectura el Gateway es asignado por DHCP en la interfaz eth1, descomentar para cambios de arquitectura de red
+    #echo "  gateway $3" >> "$INTERFACES_FILE"   
+}
+
+function configurar_red {
+
+	local if_type=$(get_nombrado_interfaces)
+	
+	
+	if [[ $(echo $if_type | grep -q Clásico) || "$1" = "nocheck" ]]; then
+		#Estan normales
+		_mensaje "Se van a configurar las interfaces de red:\n\neth0 --> con IP fija para conectar con los clientes.\neth1 --> con DHCP para la salida a internet"
+		if [[ $(ip link show eth0) || "$1" = "nocheck" ]]; then
+		
+			local ipaddr=$(_formulario "Indique la dirección IP para eth0:" "10.10.10.10")
+			local netmask=$(_formulario "Indique la máscara de Subred:" "255.255.255.0")
+			
+			#--> En nuestra arquitectura el Gateway es asignado por DHCP en la interfaz eth1, descomentar para cambios de arquitectura de red
+			#local gateway=$(_formulario "Indique la dirección de Gateway:" "10.10.10.1") 
+			
+			set_static_red "$ipaddr" "$netmask"
+			_mensaje "La interfaz eth0 ha sido configurada correctamente:\n\nDirección IP --> $ipaddr\nMáscara de Subred --> $netmask"
+			
+			if [[ $(ip link show eth1) || "$1" = "nocheck" ]]; then
+			
+				set_dhcp_red
+				_mensaje "La interfaz eth1 ha sido configurada correctamente con DHCP."
+			
+				[ "$1" = "nocheck" ] || { _info "Reiniciando servicio de red...";systemctl restart networking &> /dev/null;ifup eth0 &> /dev/null;ifup eth1 &> /dev/null; }
+			
+			else
+				_mensaje "¡Error! La interfaz eth1 no existe"
+				return 1
+			fi
+		else
+			_mensaje "¡Error! La interfaz eth0 no existe"
+			return 1
+		fi
+	else
+		_mensaje "¡Error! Debe cambiar el nombrado de interfaces a Clásico para poder configurarlas con el DTE Admin."
+	fi
+}
+
+function set_nombrado_interfaces {
+
+	local flag_file=$CONF_DIR/if_conf
+
+	local if_type=$(get_nombrado_interfaces)
+
+	if (_confirmacion "El nombrado actual de las interfaces de red es:\n$if_type\n\n¿Desea cambiarlo?"); then
+		_info "Aplicando cambios..."
+	    	if [[ $(echo $if_type | grep Normal) ]]; then
+			local if_type_final="Clásico (ethX)"	
+			sed -ie 's/GRUB_CMDLINE_LINUX="\(.*\)"/GRUB_CMDLINE_LINUX="\1 net.ifnames=0 biosdevname=0"/' /etc/default/grub
+			grub-mkconfig -o /boot/grub/grub.cfg &> /dev/null
+		else
+			local if_type_final="Normal (enpXsY, enoX, ...)"
+			
+			sed -ie 's/GRUB_CMDLINE_LINUX="\(.*\)"/GRUB_CMDLINE_LINUX=""/' /etc/default/grub
+			grub-mkconfig -o /boot/grub/grub.cfg &> /dev/null
+		fi
+		_mensaje "El nombrado de las interfaces de red se ha cambiado de $if_type a $if_type_final\n\nA continuación se reiniciará el equipo para aplicar los cambios."
+		if (_confirmacion "¿Desea configurar la red antes de reniciar?\n De esta forma podrá recuperar su conexión SSH"); then
+			configurar_red "nocheck"
+		fi
+		clear
+		reboot&
+		exit
+	fi	
+}
