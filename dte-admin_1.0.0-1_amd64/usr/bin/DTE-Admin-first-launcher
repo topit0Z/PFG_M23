@@ -15,4 +15,4 @@ source $BIN_DIR/functions
 
 ## Main ##
 make_backups
-set_nombrado_nterfaces
+set_nombrado_interfaces
