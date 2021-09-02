@@ -2,5 +2,5 @@ Package: dte-admin
 Version: 1.0.0-1
 Architecture: all
 Maintainer: Pedro Requena <pf.requena@alumnos.upm.es>
-Depends: whiptail, tcpdump
+Depends: whiptail, tcpdump, sudo, gnupg
 Description: Gestión de la infraestructura informática de los laboratorios DTE
