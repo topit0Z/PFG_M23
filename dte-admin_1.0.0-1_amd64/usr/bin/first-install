@@ -13,7 +13,7 @@ interfaces_file=/etc/network/interfaces
 BIN_DIR=/usr/bin
 
 #Cargamos las funciones
-source $BIN_DIR/functions.sh
+source $BIN_DIR/functions
 
 
 ## Main ##
