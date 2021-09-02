@@ -8,6 +8,7 @@ NOMBRE="DTE Admin"
 VERSION=1.0.0
 TITULO="$NOMBRE $VERSION"
 
+BIN_DIR=/usr/bin
 LOG_DIR=/var/log/DTE-Admin
 CONF_DIR=/etc/DTE-Admin
 FLAG_FILE=$CONF_DIR/if_conf
@@ -17,7 +18,7 @@ PASSWORD=""
 interfaces_file=/etc/network/interfaces
 
 #Cargamos las funciones
-source ./functions.sh
+source $BIN_DIR/functions.sh
 
 
 # Main #

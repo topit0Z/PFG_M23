@@ -8,10 +8,13 @@ NOMBRE="DTE Admin - First Install"
 VERSION=1.0.0
 TITULO="$NOMBRE $VERSION"
 
+
+interfaces_file=/etc/network/interfaces
+BIN_DIR=/usr/bin
+
 #Cargamos las funciones
-source ./functions.sh
+source $BIN_DIR/functions.sh
+
 
 ## Main ##
-
 setNombradoInterfaces
-#getNombradoInterfaces

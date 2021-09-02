@@ -100,7 +100,7 @@ function instalarM23 {
 # y almacena sus direcciones MAC en el fichero $result_file
 function escanearMAC {
 
-	if [[ $(ip link show eth0) ]]; then
+	if [[ $(ip link show eth0 &> /dev/null) ]]; then
 
 		tmp_file=/tmp/macs_tmp.txt
 		
@@ -117,7 +117,7 @@ function escanearMAC {
 		sed -i '/^$/d' $result_file
 		rm -f $tmp_file
 		
-		if [ ! -s $result_file ]; then
+		if [ -s $result_file ]; then
 	      		# The file is not-empty.
 			_leerFichero "Direcciones MAC encontradas:" $result_file
 			_mensaje "Las direcciones MAC se han guardado en $result_file"
@@ -188,7 +188,7 @@ function configurarRed {
 			set_dhcp_net
 			_mensaje "La interfaz eth1 ha sido configurada correctamente con DHCP."
 			
-			[ "$1" = "nocheck" ] || {_info "Reiniciando servicio de red...";systemctl restart networking &> /dev/null;ifup eth0 &> /dev/null;ifup eth1 &> /dev/null}
+			[ "$1" = "nocheck" ] || { _info "Reiniciando servicio de red...";systemctl restart networking &> /dev/null;ifup eth0 &> /dev/null;ifup eth1 &> /dev/null; }
 			
 			else
 				_mensaje "¡Error! La interfaz eth1 no existe"
@@ -225,6 +225,7 @@ function setNombradoInterfaces {
 		if (_confirmacion "¿Desea configurar la red antes de reniciar?\n De esta forma recuperará su conexión SSH"); then
 			configurarRed "nocheck"
 		fi
+		clear
 		reboot&
 		exit
 	fi	
