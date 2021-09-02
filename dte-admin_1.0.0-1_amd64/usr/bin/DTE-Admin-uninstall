@@ -1,0 +1,12 @@
+#!/bin/bash
+
+BIN_DIR=/usr/bin
+LIB_DIR=/var/lib
+
+#Cargamos las variables
+source $LIB_DIR/globals
+
+#Cargamos las funciones
+source $BIN_DIR/functions
+
+restore_backups
