@@ -209,7 +209,7 @@ function setNombradoInterfaces {
 
 	IF_TYPE=$(getNombradoInterfaces)
 
-	if (whiptail --title "$TITULO" --yesno "El nombrado actual de las interfaces de red es:\n$IF_TYPE\n\n¿Desea cambiarlo?" 10 78); then
+	if (_confirmacion "El nombrado actual de las interfaces de red es:\n$IF_TYPE\n\n¿Desea cambiarlo?"); then
 	_info "Aplicando cambios..."
 	    	if [[ $(echo $IF_TYPE | grep Normal) ]]; then
 			IF_TYPE_FINAL="Clásico (ethX)"	
