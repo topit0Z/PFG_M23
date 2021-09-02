@@ -1,4 +1,5 @@
 #!/bin/bash
+#	DTE-Admin-first-launcher
 # Script que se ejecuta al instalar el paquete DTE-Admin
 # para realizar configuraciones iniciales
 #
@@ -7,10 +8,10 @@ BIN_DIR=/usr/bin
 LIB_DIR=/var/lib
 
 #Cargamos las variables
-source $LIB_DIR/globals
+source $LIB_DIR/DTE-Admin-globals
 
 #Cargamos las funciones
-source $BIN_DIR/functions
+source $BIN_DIR/DTE-Admin-functions
 
 
 ## Main ##

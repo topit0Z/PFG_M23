@@ -2,17 +2,15 @@
 # DTE Admin
 # Pedro Requena <pf.requena@alumnos.upm.es>
 #
-
-
 BIN_DIR=/usr/bin
 LIB_DIR=/var/lib
 
 
 #Cargamos las variables
-source $LIB_DIR/globals
+source $LIB_DIR/DTE-Admin-globals
 
 #Cargamos las funciones
-source $BIN_DIR/functions
+source $BIN_DIR/DTE-Admin-functions
 
 
 # Main #
