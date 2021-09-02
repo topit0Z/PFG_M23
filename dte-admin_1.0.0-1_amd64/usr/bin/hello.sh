@@ -3,9 +3,9 @@
 # Pedro Requena <pf.requena@alumnos.upm.es>
 #
 
-
+NOMBRE="DTE Admin"
 VERSION=1.0.0
-TITULO="DTE Admin $VERSION"
+TITULO="$NOMBRE $VERSION"
 
 
 clear
