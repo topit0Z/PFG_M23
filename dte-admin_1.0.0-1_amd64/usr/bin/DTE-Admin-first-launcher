@@ -3,18 +3,16 @@
 # para realizar configuraciones iniciales
 #
 #
-
-NOMBRE="DTE Admin - First Install"
-VERSION=1.0.0
-TITULO="$NOMBRE $VERSION"
-
-
-interfaces_file=/etc/network/interfaces
 BIN_DIR=/usr/bin
+LIB_DIR=/var/lib
+
+#Cargamos las variables
+source $LIB_DIR/globals
 
 #Cargamos las funciones
 source $BIN_DIR/functions
 
 
 ## Main ##
-setNombradoInterfaces
+make_backups
+set_nombrado_nterfaces
