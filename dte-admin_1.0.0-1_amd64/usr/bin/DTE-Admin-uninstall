@@ -9,4 +9,8 @@ source $LIB_DIR/DTE-Admin-globals
 #Cargamos las funciones
 source $BIN_DIR/DTE-Admin-functions
 
+
+#Limpiamos el directorio de configuración
+rm -rf $CONF_DIR/*
+
 restore_backups

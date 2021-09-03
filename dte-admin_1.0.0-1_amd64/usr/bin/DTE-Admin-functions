@@ -1,32 +1,34 @@
 #!/bin/bash
 #
+#	DTE-Admin-functions
+#	Pedro Requena <pf.requena@alumnos.upm.es>
+#
 # En este fichero se encuentran todas las funciones de las que hacen uso
 # los scripts que componen el DTE-Admin
-#
+
 
 ### Funciones auxiliares para el manejo de los diálogos whiptail ###
-# 
-function _confirmacion {
+
+function _confirmacion()
+{
 
 	whiptail --title "$TITULO" \
 	--yesno "$1" 10 78
 }
 
-function _info {
+function _info()
+{
 
-	local term_tmp="$TERM"
-	
-	local term=ansi #Debemos cambiar temporalmente el tipo de Terminal debido a un bug de whiptail infobox con xterm
+	local TERM=ansi #Debemos cambiar temporalmente el tipo de Terminal debido a un bug de whiptail infobox con xterm
 	
 	txt="$1"
 	
 	whiptail --title "$TITULO" \
 	--infobox "$txt" 10 70
-	
-	#term="$term_temp"
 }
 
-function _leer_fichero {
+function _leer_fichero()
+{
 
 	local subtitulo="$1"
 	local fichero="$2"
@@ -36,7 +38,8 @@ function _leer_fichero {
 	-scrolltext
 }
 
-function _mensaje {
+function _mensaje()
+{
 
 	local msg="$1"
 	
@@ -45,7 +48,8 @@ function _mensaje {
 	10 70
 }
 
-function _formulario {
+function _formulario()
+{
 
 	local pregunta="$1"
 	local default="$2"
@@ -62,33 +66,49 @@ function _formulario {
 ### Funciones generales ###
 
 
-function make_backups {
+function make_backups()
+{
 
 	cp -f /etc/default/grub /etc/default/grub.dte_bak
 	cp -f /etc/network/interfaces /etc/network/interfaces.dte_bak
+	cp -f /etc/sysctl.conf /etc/sysctl.conf.dte_bak
+	
+return 0
 }
 
-function _restore_network {
+function _restore_network()
+{
+
 	mv /etc/network/interfaces.dte_bak /etc/network/interfaces
 	systemctl restart networking
-
+	
+	mv /etc/sysctl.conf.dte_bak /etc/sysctl.conf
+		
+return 0
 }
 
-function _restore_grub {
+function _restore_grub()
+{
 	mv /etc/default/grub.dte_bak /etc/default/grub
 	grub-mkconfig -o /boot/grub/grub.cfg
+
+return 0
 }
 
-function restore_backups {
+function restore_backups()
+{
 
 	_restore_network
 	_restore_grub
+
+return 0
 }
 
-function instalar_m23 {
+function instalar_m23()
+{
 
 	# Si no existe la clave del repositorio APT de M23, la añadimos
-	(apt-key list 2> /dev/null | grep "Hauke Goos-Habermann" &> /dev/null) || (wget -T1 -t1 -q http://m23.sourceforge.net/m23-Sign-Key.asc -O - | apt-key add -)
+	(apt-key list 2> /dev/null | grep -q "Hauke Goos-Habermann") || (wget -T1 -t1 -q http://m23.sourceforge.net/m23-Sign-Key.asc -O - | apt-key add -)
 	
 	# Si no existe el repositorio de M23 en los sources de APT, lo añadimos
 	[ -f /etc/apt/sources.list.d/m23.list ] || echo 'deb http://m23inst.goos-habermann.de ./' > /etc/apt/sources.list.d/m23.list
@@ -96,22 +116,25 @@ function instalar_m23 {
 	#Actualizamos la base de datos de APT
 	apt update
 	
-	export DEBIAN_FRONTEND=noninteractive
+	#export DEBIAN_FRONTEND=noninteractive
 	
 	#Instalamos M23 y sus dependencias
 	apt install -y m23
 	
-	export DEBIAN_FRONTEND=""
+	#export DEBIAN_FRONTEND=""
 	
 	_mensaje "La instalación de m23 ha finalizado."
 	
 	#¿Donde metemos el dpkg-reconfigure?
+
+return 0
 }
 
 # Escanea la red de área local en busca de clientes 
 # que trate de realizar un arranque PXE
 # y almacena sus direcciones MAC en el fichero $result_file
-function escanear_MAC {
+function escanear_MAC()
+{
 
 	if [[ $(ip link show eth0 &> /dev/null) ]]; then
 
@@ -123,12 +146,12 @@ function escanear_MAC {
 		
 		[ -f "$result_file" ] && rm -f $result_file #Borramos el fichero de resultados para no duplicar direcciones MAC
 		
-		(tcpdump -i eth0 -qtel broadcast and port bootpc > $tmp_file 2>/dev/null)& #Analizamos el tráfico de red en busca de arranques PXE
+		(tcpdump -i eth0 -qtel broadcast and port bootpc >$tmp_file 2>/dev/null)& #Analizamos el tráfico de red en busca de arranques PXE
 		_mensaje "Escaneando direcciones MAC...\nPulse aceptar para terminar."
 		sudo killall tcpdump
 		(perl -ane 'print "\U$F[0]\n"' $tmp_file|sort|uniq) > $result_file
-		sed -i '/^$/d' $result_file
-		rm -f $tmp_file
+		sed -i '/^$/d' "$result_file"
+		rm -f "$tmp_file"
 		
 		if [ -s "$result_file" ]; then
 	      		# The file is not-empty.
@@ -140,11 +163,15 @@ function escanear_MAC {
 		fi
 	else
 		_mensaje "¡Error! Debe configurar las interfaces de red antes de escanear direcciones MAC."
+		return 1
 	fi
+
+return 0
 }
 
 
-function get_nombrado_interfaces {
+function get_nombrado_interfaces()
+{
 
 	local if_type=""
 
@@ -153,17 +180,30 @@ function get_nombrado_interfaces {
 	[ "$1" = "show" ] && _mensaje "El nombrado actual de las interfaces de red es:\n$if_type"
 	
 	echo $if_type
+
+return 0
 }
 
-set_dhcp_red(){
+get_static_red()
+{	
+	
+	IPADDR=$(ifconfig eth0 | sed -En 's/127.0.0.1//;s/.*inet (addr:)?(([0-9]*\.){3}[0-9]*).*/\2/p')
+	NETMASK=$(ifconfig eth0 | sed -rn '2s/ .*:(.*)$/\1/p')
+}
+
+set_dhcp_red()
+{
 
     echo ""  >> "$INTERFACES_FILE"
     echo "allow-hotplug eth1" >> "$INTERFACES_FILE"
-    echo "iface eth1 inet dhcp" >> "$INTERFACES_FILE"    
+    echo "iface eth1 inet dhcp" >> "$INTERFACES_FILE"
+    
+return 0
 }
 
 
-set_static_red(){
+set_static_red()
+{ 
 
     # set_static_red IP SUBNET GATEWAY
     echo "auto lo" > "$INTERFACES_FILE"
@@ -174,10 +214,17 @@ set_static_red(){
     echo "  address $1" >> "$INTERFACES_FILE"
     echo "  netmask $2" >> "$INTERFACES_FILE"
     #--> En nuestra arquitectura el Gateway es asignado por DHCP en la interfaz eth1, descomentar para cambios de arquitectura de red
-    #echo "  gateway $3" >> "$INTERFACES_FILE"   
+    #echo "  gateway $3" >> "$INTERFACES_FILE"
+    
+    IPADDR=$1
+    NETMASK=$2
+    #GATEWAY=$3
+  
+return 0  
 }
 
-function configurar_red {
+function configurar_red()
+{
 
 	local if_type=$(get_nombrado_interfaces)
 	
@@ -213,10 +260,14 @@ function configurar_red {
 		fi
 	else
 		_mensaje "¡Error! Debe cambiar el nombrado de interfaces a Clásico para poder configurarlas con el DTE Admin."
+		return 1
 	fi
+	
+return 0
 }
 
-function set_nombrado_interfaces {
+function set_nombrado_interfaces()
+{
 
 	local flag_file=$CONF_DIR/if_conf
 
@@ -241,5 +292,89 @@ function set_nombrado_interfaces {
 		clear
 		reboot&
 		exit
+	else
+		return 1
 	fi	
+}
+
+
+#Función obtenida de: https://gist.github.com/tiveone/2506075
+function ::netmask2cidr()
+{
+  case $1 in
+      0x*)
+      local hex=${1#0x*} quad=
+      while [ -n "${hex}" ]; do
+        local lastbut2=${hex#??*}
+        quad=${quad}${quad:+.}0x${hex%${lastbut2}*}
+        hex=${lastbut2}
+      done
+      set -- ${quad}
+      ;;
+  esac
+
+  local i= len=
+  local IFS=.
+  for i in $1; do
+    while [ ${i} != "0" ]; do
+      len=$((${len} + ${i} % 2))
+      i=$((${i} >> 1))
+    done
+  done
+
+  echo "${len}"
+}
+
+function set_ip_forwarding()
+{
+	get_static_red
+	local mask=$(::netmask2cidr "$NETMASK")
+	mask=$()
+	
+	if [[ "IPADDR" != "" && "NETMASK" != "" || "$1" = "nocheck" ]]; then
+		if(_confirmacion "Activar el Router virtual permitirá que los clientes accedan a internet a través de esta máquina. ¿Desea continuar?"); then
+			
+			# Primero, lo activamos a nivel de kernel
+			echo 1 > /proc/sys/net/ipv4/ip_forward #Lo activamos
+			sed -i '/net.ipv4.ip_forward=1/s/^#//g' /etc/sysctl.conf #Descomentamos la línea para hacerlo persistente
+			
+			
+			#Segundo, configuramos iptables
+			iptables -t nat -A POSTROUTING -s "$IPADDR"/"$mask" -o eth1 -j MASQUERADE
+			
+			#Lo hacemos persistente
+			iptables-save > /etc/iptables/rules.v4
+			
+			touch "$FLAG_CONF_ROUTER_FILE"
+			
+			_mensaje "El Router Virtual ha sido activado correctamente"
+			return 0
+		fi	
+	else
+		_mensaje "¡Error! Debe configurar las interfaces de red para poder activar el Router virtual."
+		return 1
+	fi
+return 0	
+}
+
+function unset_ip_forwarding()
+{
+	if [ -f "$FLAG_CONF_ROUTER_FILE" ]; then
+	
+		if(_confirmacion "Si desactiva el Router virtual los clientes no podrán accedan a internet a través de esta máquina. ¿Desea continuar?"); then
+		
+			# Primero, lo desactivamos a nivel de kernel
+			echo 0 > /proc/sys/net/ipv4/ip_forward #Lo desactivamos
+			sed -i '/net.ipv4.ip_forward=1/s/^/#/g' /etc/sysctl.conf #Comentamos la línea para hacerlo persistente
+			
+			# Quitamos la regla de iptables
+			echo "" > /etc/iptables/rules.v4
+			rm -f "$FLAG_CONF_ROUTER_FILE"
+			return 0
+		fi
+	else
+		_mensaje "¡Error! El Router virtual no está activado."
+		return 1
+	fi
+return 0	
 }
