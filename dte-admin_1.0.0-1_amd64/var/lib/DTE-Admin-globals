@@ -1,5 +1,7 @@
 #!/bin/bash
 # Variables globales para los scripts DTE Admin
+# BIN_DIR y LIB_DIR se encuentran en los scripts de ejecución por necesidades del diseño
+#
 
 NOMBRE="DTE Admin"
 VERSION=1.0.0
@@ -13,3 +15,4 @@ INTERFACES_FILE=/etc/network/interfaces
 
 IPADDR=""
 NETMASK=""
+IPADDR_ICDR=""

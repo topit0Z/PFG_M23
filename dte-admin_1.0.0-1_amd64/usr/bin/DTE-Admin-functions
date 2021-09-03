@@ -39,13 +39,14 @@ function _info()
 
 function _leer_fichero()
 {
-
-	local subtitulo="$1"
-	local fichero="$2"
-
+	local subtitulo=""
+	local fichero=""
+	subtitulo="$1"
+	fichero="$2"
+	
 	whiptail --title "$TITULO - $subtitulo" \
 	--textbox "$fichero" 7 70 \
-	-scrolltext
+	--scrolltext
 }
 
 function _mensaje()
@@ -123,19 +124,16 @@ function instalar_m23()
 	# Si no existe el repositorio de M23 en los sources de APT, lo añadimos
 	[ -f /etc/apt/sources.list.d/m23.list ] || echo 'deb http://m23inst.goos-habermann.de ./' > /etc/apt/sources.list.d/m23.list
 	
+	#dpkg --configure -a
+	
 	#Actualizamos la base de datos de APT
 	apt update
 	
-	#export DEBIAN_FRONTEND=noninteractive
 	
 	#Instalamos M23 y sus dependencias
 	apt install -y m23
 	
-	#export DEBIAN_FRONTEND=""
-	
 	_mensaje "La instalación de m23 ha finalizado."
-	
-	#¿Donde metemos el dpkg-reconfigure?
 
 return 0
 }
@@ -146,7 +144,7 @@ return 0
 function escanear_MAC()
 {
 
-	if [[ $(ip link show eth0 &> /dev/null) ]]; then
+	if [[ $(ip link show eth0) ]]; then
 
 		local tmp_file=/tmp/macs_tmp.txt
 		
@@ -196,9 +194,9 @@ return 0
 
 get_static_red()
 {	
-	
-	IPADDR=$(ifconfig eth0 | sed -En 's/127.0.0.1//;s/.*inet (addr:)?(([0-9]*\.){3}[0-9]*).*/\2/p')
-	NETMASK=$(ifconfig eth0 | sed -rn '2s/ .*:(.*)$/\1/p')
+	IPADDR=$(ifconfig eth0| grep -w inet |grep -v 127.0.0.1| awk '{print $2}' | cut -d ":" -f 2)
+	NETMASK=$(ifconfig eth0 | grep -w inet |grep -v 127.0.0.1| awk '{print $4}' | cut -d ":" -f 2)
+	IPADDR_ICDR=$(ip -o -f inet addr show eth0 | awk '/scope global/ {print $4}')
 }
 
 set_dhcp_red()
@@ -207,7 +205,7 @@ set_dhcp_red()
     echo ""  >> "$INTERFACES_FILE"
     echo "allow-hotplug eth1" >> "$INTERFACES_FILE"
     echo "iface eth1 inet dhcp" >> "$INTERFACES_FILE"
-    
+  
 return 0
 }
 
@@ -300,39 +298,12 @@ function set_nombrado_interfaces()
 			configurar_red "nocheck"
 		fi
 		clear
-		reboot&
+		_info "Finalizando instalación y reiniciando..."
+		(sleep 15 && reboot)&
 		exit
 	else
-		return 1
+		return 0
 	fi	
-}
-
-
-#Función obtenida de: https://gist.github.com/tiveone/2506075
-function ::netmask2cidr()
-{
-  case $1 in
-      0x*)
-      local hex=${1#0x*} quad=
-      while [ -n "${hex}" ]; do
-        local lastbut2=${hex#??*}
-        quad=${quad}${quad:+.}0x${hex%${lastbut2}*}
-        hex=${lastbut2}
-      done
-      set -- ${quad}
-      ;;
-  esac
-
-  local i= len=
-  local IFS=.
-  for i in $1; do
-    while [ ${i} != "0" ]; do
-      len=$((${len} + ${i} % 2))
-      i=$((${i} >> 1))
-    done
-  done
-
-  echo "${len}"
 }
 
 function set_ip_forwarding()
@@ -350,7 +321,7 @@ function set_ip_forwarding()
 				
 				
 				#Segundo, configuramos iptables
-				iptables -t nat -A POSTROUTING -s "$IPADDR"/"$mask" -o eth1 -j MASQUERADE
+				iptables -t nat -A POSTROUTING -s "$IPADDR_ICDR" -o eth1 -j MASQUERADE
 				
 				#Lo hacemos persistente
 				iptables-save > /etc/iptables/rules.v4
