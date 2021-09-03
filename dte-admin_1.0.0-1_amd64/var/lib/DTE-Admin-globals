@@ -10,6 +10,7 @@ TITULO="$NOMBRE $VERSION"
 CONF_DIR=/etc/DTE-Admin
 FLAG_CONF_RED_FILE=$CONF_DIR/flag_conf_red
 FLAG_CONF_ROUTER_FILE=$CONF_DIR/flag_conf_router
+FLAG_CONF_M23_FILE=$CONF_DIR/flag_conf_m23
 
 INTERFACES_FILE=/etc/network/interfaces
 

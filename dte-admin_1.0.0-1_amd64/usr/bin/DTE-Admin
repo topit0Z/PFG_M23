@@ -11,7 +11,7 @@ LIB_DIR=/var/lib
 source $LIB_DIR/DTE-Admin-globals
 
 #Cargamos las funciones
-source $BIN_DIR/DTE-Admin-functions
+source $BIN_DIR/DTE-Admin-funciones
 
 
 # Main #
@@ -37,7 +37,8 @@ CHOICE=$(
 	"6)" "Activar Router virtual" \
 	"7)" "Desactivar Router virtual" \
 	"8)" "Enviar fichero por SCP" \
-	"9)" "Salir" \
+	"9)" "Generar certificado del servidor Apache" \
+	"10)" "Salir" \
 	3>&1 1<&2 2>&3) # Se intercambian stdout y stderr porque whiptail utiliza la primera para imprimir los diálogos y la segunda para los datos introducidos, así podemos recogerlos
 	
 	case $CHOICE in
@@ -67,6 +68,9 @@ CHOICE=$(
 			enviar_fichero
 		;;
 		"9)")
+			generar_certificado
+		;;
+		"10)")
 			clear
 			exit
 		;;

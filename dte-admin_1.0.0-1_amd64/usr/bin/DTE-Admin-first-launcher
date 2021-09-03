@@ -11,7 +11,7 @@ LIB_DIR=/var/lib
 source $LIB_DIR/DTE-Admin-globals
 
 #Cargamos las funciones
-source $BIN_DIR/DTE-Admin-functions
+source $BIN_DIR/DTE-Admin-funciones
 
 
 ## Main ##

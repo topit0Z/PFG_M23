@@ -1,3 +1,5 @@
 #!/bin/bash
-# This `DEBIAN/postinst` script is run post-installation
+# Este script se ejecuta tras la instalación del paquete dte-admin
 /usr/bin/DTE-Admin-first-launcher
+
+

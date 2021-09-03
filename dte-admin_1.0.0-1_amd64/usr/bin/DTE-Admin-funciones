@@ -117,25 +117,27 @@ return 0
 
 function instalar_m23()
 {
-
-	# Si no existe la clave del repositorio APT de M23, la añadimos
-	(apt-key list 2> /dev/null | grep -q "Hauke Goos-Habermann") || (wget -T1 -t1 -q http://m23.sourceforge.net/m23-Sign-Key.asc -O - | apt-key add -)
-	
-	# Si no existe el repositorio de M23 en los sources de APT, lo añadimos
-	[ -f /etc/apt/sources.list.d/m23.list ] || echo 'deb http://m23inst.goos-habermann.de ./' > /etc/apt/sources.list.d/m23.list
-	
-	#dpkg --configure -a
-	
-	#Actualizamos la base de datos de APT
-	apt update
-	
-	
-	#Instalamos M23 y sus dependencias
-	apt install -y m23
-	
-	_mensaje "La instalación de m23 ha finalizado."
-
-return 0
+	if [ ! -f "$FLAG_CONF_M23_FILE" ]; then
+		# Si no existe la clave del repositorio APT de M23, la añadimos
+		(apt-key list 2> /dev/null | grep -q "Hauke Goos-Habermann") || (wget -T1 -t1 -q http://m23.sourceforge.net/m23-Sign-Key.asc -O - | apt-key add -)
+		
+		# Si no existe el repositorio de M23 en los sources de APT, lo añadimos
+		[ -f /etc/apt/sources.list.d/m23.list ] || echo 'deb http://m23inst.goos-habermann.de ./' > /etc/apt/sources.list.d/m23.list
+		
+		#dpkg --configure -a
+		
+		#Actualizamos la base de datos de APT
+		apt update
+		
+		
+		#Instalamos M23 y sus dependencias
+		apt install -y m23
+		
+		[ $? -eq 0 ] && { _mensaje "La instalación de m23 ha finalizado."; touch "$FLAG_CONF_M23_FILE"; return 0; } || { _mensaje "¡Error! La instalación de m23 ha fallado."; return 1; }
+	else
+		_mensaje "¡m23 ya está instalado"
+		return 0
+	fi
 }
 
 # Escanea la red de área local en busca de clientes 
@@ -233,11 +235,10 @@ return 0
 
 function configurar_red()
 {
-
 	local if_type=$(get_nombrado_interfaces)
 	
 	
-	if [[ $(echo $if_type | grep -q Clásico) || "$1" = "nocheck" ]]; then
+	if [[ $(echo $if_type | grep Clásico) || "$1" = "nocheck" ]]; then
 		#Estan normales
 		_mensaje "Se van a configurar las interfaces de red:\n\neth0 --> con IP fija para conectar con los clientes.\neth1 --> con DHCP para la salida a internet"
 		if [[ $(ip link show eth0) || "$1" = "nocheck" ]]; then
@@ -309,7 +310,6 @@ function set_nombrado_interfaces()
 function set_ip_forwarding()
 {
 	get_static_red
-	local mask=$(::netmask2cidr "$NETMASK")
 	if [ ! -f "$FLAG_CONF_ROUTER_FILE" ]; then
 
 		if [[ "IPADDR" != "" && "NETMASK" != "" || "$1" = "nocheck" ]]; then
@@ -384,4 +384,27 @@ function enviar_fichero()
 	
 	[ $? -eq 0 ] && { _mensaje "Fichero $file enviado con éxito a $host!";return 0; } || { _mensaje "Error al enviar fichero"; return 1; }
 	
+}
+
+function generar_certificado()
+{
+	rm -f /etc/apache/m23/server.crt &> /dev/null
+	openssl req -new -x509 -nodes -sha256 -days 365 -key /etc/apache/m23/server.key \
+		-subj "/C=ES/ST=Madrid/L=Madrid/O=DTE_ETSIST_UPM/CN=www.etsist.upm.es/" \
+		-out /etc/apache/m23/server.crt
+		
+	if [ $? -eq 0 ]; then
+		
+		_mensaje "Generado con éxito el certificado /etc/apache/m23/server.crt con validez de 1 año"
+		_info "Reiniciando servidor Apache..."
+		systemctl restart apache2
+		
+		return 0
+	else
+		_mensaje "¡Error! No se ha podido generar el certificado"
+	fi
+		
+	
+	
+		
 }
