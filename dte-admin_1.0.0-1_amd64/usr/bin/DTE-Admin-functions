@@ -339,29 +339,33 @@ function set_ip_forwarding()
 {
 	get_static_red
 	local mask=$(::netmask2cidr "$NETMASK")
-	mask=$()
-	
-	if [[ "IPADDR" != "" && "NETMASK" != "" || "$1" = "nocheck" ]]; then
-		if(_confirmacion "Activar el Router virtual permitirá que los clientes accedan a internet a través de esta máquina. ¿Desea continuar?"); then
-			
-			# Primero, lo activamos a nivel de kernel
-			echo 1 > /proc/sys/net/ipv4/ip_forward #Lo activamos
-			sed -i '/net.ipv4.ip_forward=1/s/^#//g' /etc/sysctl.conf #Descomentamos la línea para hacerlo persistente
-			
-			
-			#Segundo, configuramos iptables
-			iptables -t nat -A POSTROUTING -s "$IPADDR"/"$mask" -o eth1 -j MASQUERADE
-			
-			#Lo hacemos persistente
-			iptables-save > /etc/iptables/rules.v4
-			
-			touch "$FLAG_CONF_ROUTER_FILE"
-			
-			_mensaje "El Router Virtual ha sido activado correctamente"
-			return 0
-		fi	
+	if [ ! -f "$FLAG_CONF_ROUTER_FILE" ]; then
+
+		if [[ "IPADDR" != "" && "NETMASK" != "" || "$1" = "nocheck" ]]; then
+			if(_confirmacion "Activar el Router virtual permitirá que los clientes accedan a internet a través de esta máquina. ¿Desea continuar?"); then
+				
+				# Primero, lo activamos a nivel de kernel
+				echo 1 > /proc/sys/net/ipv4/ip_forward #Lo activamos
+				sed -i '/net.ipv4.ip_forward=1/s/^#//g' /etc/sysctl.conf #Descomentamos la línea para hacerlo persistente
+				
+				
+				#Segundo, configuramos iptables
+				iptables -t nat -A POSTROUTING -s "$IPADDR"/"$mask" -o eth1 -j MASQUERADE
+				
+				#Lo hacemos persistente
+				iptables-save > /etc/iptables/rules.v4
+				
+				touch "$FLAG_CONF_ROUTER_FILE"
+				
+				_mensaje "El Router Virtual ha sido activado correctamente"
+				return 0
+			fi	
+		else
+			_mensaje "¡Error! Debe configurar las interfaces de red para poder activar el Router virtual."
+			return 1
+		fi
 	else
-		_mensaje "¡Error! Debe configurar las interfaces de red para poder activar el Router virtual."
+		_mensaje "¡Error! El Router virtual ya está activado."
 		return 1
 	fi
 return 0	
