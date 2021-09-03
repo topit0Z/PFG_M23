@@ -1,0 +1,15 @@
+#!/bin/bash
+# Variables globales para los scripts DTE Admin
+
+NOMBRE="DTE Admin"
+VERSION=1.0.0
+TITULO="$NOMBRE $VERSION"
+
+CONF_DIR=/etc/DTE-Admin
+FLAG_CONF_RED_FILE=$CONF_DIR/flag_conf_red
+FLAG_CONF_ROUTER_FILE=$CONF_DIR/flag_conf_router
+
+INTERFACES_FILE=/etc/network/interfaces
+
+IPADDR=""
+NETMASK=""
