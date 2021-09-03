@@ -28,41 +28,45 @@ while true
 do
 #
 CHOICE=$(
-	whiptail --title "$TITULO" --menu "Seleccione una opción" 20 75 8\
-	"1)" "Instalar M23"   \
+	whiptail --title "$TITULO" --menu "Seleccione una opción" 20 75 10\
+	"1)" "Instalar M23" \
 	"2)" "Consultar nombrado de las interfaces de red" \
 	"3)" "Cambiar nombrado de las interfaces de red" \
 	"4)" "Configurar Red"  \
-	"5)" "Escanear direcciones MAC"  \	
+	"5)" "Escanear direcciones MAC" \
 	"6)" "Activar Router virtual" \
 	"7)" "Desactivar Router virtual" \
-	"8)" "Salir" \
+	"8)" "Enviar fichero por SCP" \
+	"9)" "Salir" \
 	3>&1 1<&2 2>&3) # Se intercambian stdout y stderr porque whiptail utiliza la primera para imprimir los diálogos y la segunda para los datos introducidos, así podemos recogerlos
 	
 	case $CHOICE in
-		"1)")   
+		"1)")
 			instalar_m23
 		;;
-		"2)")   
+		"2)")
 			get_nombrado_interfaces "show"
 		;;
-		"3)")   
+		"3)")
 			set_nombrado_interfaces
 		;;
-		"4)")   
+		"4)")
 			configurar_red
 		;;
-		"5)")   
+		"5)")
 			escanear_MAC
 			
 		;;
-		"6)")   
+		"6)")
 			set_ip_forwarding
 		;;
-		"7)")   
+		"7)")
 			unset_ip_forwarding
 		;;
-		"8)") 
+		"8)")
+			enviar_fichero
+		;;
+		"9)")
 			clear
 			exit
 		;;

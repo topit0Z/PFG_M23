@@ -9,6 +9,16 @@
 
 ### Funciones auxiliares para el manejo de los diálogos whiptail ###
 
+function _contraseña()
+{
+	local respuesta=""
+	
+	respuesta=$(whiptail --title "$TITULO" \
+                     --passwordbox "Introduzca la contraseña:" 7 70 \
+                     3>&1 1>&2 2>&3)
+	echo $respuesta
+}
+
 function _confirmacion()
 {
 
@@ -377,4 +387,26 @@ function unset_ip_forwarding()
 		return 1
 	fi
 return 0	
+}
+
+function enviar_fichero()
+{
+	local file=""
+	local host=""
+	local user=""
+	local pass=""
+	local dest_dir=""
+	
+	file=$(_formulario "Indique el fichero que desea enviar:" "$HOME/mac.list")
+	host=$(_formulario "Indique el nombre/dirección del equipo destino:" "10.10.10.2")
+	user=$(_formulario "Indique el nombre del usuario destino:" "root")
+	pass=$(_contraseña)
+	dest=$(_formulario "Indique el directorio de destino:" "/tmp/")
+		
+	_info "Enviando fichero..."
+	
+	sshpass -p "$pass" scp "$file" "$user"@"$host":"$dest_dir"
+	
+	[ $? -eq 0 ] && { _mensaje "Fichero $file enviado con éxito a $host!";return 0; } || { _mensaje "Error al enviar fichero"; return 1; }
+	
 }
