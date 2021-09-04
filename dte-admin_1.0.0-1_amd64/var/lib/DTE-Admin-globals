@@ -16,4 +16,5 @@ INTERFACES_FILE=/etc/network/interfaces
 
 IPADDR=""
 NETMASK=""
+GATEWAY=""
 IPADDR_ICDR=""

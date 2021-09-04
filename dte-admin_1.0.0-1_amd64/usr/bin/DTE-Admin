@@ -37,8 +37,7 @@ CHOICE=$(
 	"6)" "Activar Router virtual" \
 	"7)" "Desactivar Router virtual" \
 	"8)" "Enviar fichero por SCP" \
-	"9)" "Generar certificado del servidor Apache" \
-	"10)" "Salir" \
+	"9)" "Salir" \
 	3>&1 1<&2 2>&3) # Se intercambian stdout y stderr porque whiptail utiliza la primera para imprimir los diálogos y la segunda para los datos introducidos, así podemos recogerlos
 	
 	case $CHOICE in
@@ -67,10 +66,10 @@ CHOICE=$(
 		"8)")
 			enviar_fichero
 		;;
+		#"9)")
+		#	generar_certificado
+		#;;
 		"9)")
-			generar_certificado
-		;;
-		"10)")
 			clear
 			exit
 		;;

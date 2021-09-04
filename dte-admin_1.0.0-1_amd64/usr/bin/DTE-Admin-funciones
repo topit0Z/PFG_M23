@@ -45,7 +45,7 @@ function _leer_fichero()
 	fichero="$2"
 	
 	whiptail --title "$TITULO - $subtitulo" \
-	--textbox "$fichero" 7 70 \
+	--textbox "$fichero" 20 70 \
 	--scrolltext
 }
 
@@ -56,7 +56,7 @@ function _mensaje()
 	
 	whiptail --title "$TITULO" \
 	--msgbox "$msg" \
-	10 70
+	15 70
 }
 
 function _formulario()
@@ -124,18 +124,23 @@ function instalar_m23()
 		# Si no existe el repositorio de M23 en los sources de APT, lo añadimos
 		[ -f /etc/apt/sources.list.d/m23.list ] || echo 'deb http://m23inst.goos-habermann.de ./' > /etc/apt/sources.list.d/m23.list
 		
-		#dpkg --configure -a
-		
 		#Actualizamos la base de datos de APT
 		apt update
 		
-		
+		#export DEBIAN_FRONTEND="noninteractive"
 		#Instalamos M23 y sus dependencias
 		apt install -y m23
+		local ret=$?
+		#export DEBIAN_FRONTEND=""
 		
-		[ $? -eq 0 ] && { _mensaje "La instalación de m23 ha finalizado."; touch "$FLAG_CONF_M23_FILE"; return 0; } || { _mensaje "¡Error! La instalación de m23 ha fallado."; return 1; }
+		#sed -i 's/newIP="$(hostname.*/newIP="$(hostname -I | head -n1 | cut -d " " -f1)"/' mkCert.sh
+		
+		#dpkg --configure -a
+		
+		
+		[ $ret -eq 0 ] && { _mensaje "La instalación de m23 ha finalizado.";touch "$FLAG_CONF_M23_FILE";touch $FLAG_CONF_M23_FILE;return 0; } || { _mensaje "¡Error! La instalación de m23 ha fallado."; return 1; }
 	else
-		_mensaje "¡m23 ya está instalado"
+		_mensaje "¡Error! m23 ya está instalado"
 		return 0
 	fi
 }
@@ -159,7 +164,7 @@ function escanear_MAC()
 		(tcpdump -i eth0 -qtel broadcast and port bootpc >$tmp_file 2>/dev/null)& #Analizamos el tráfico de red en busca de arranques PXE
 		_mensaje "Escaneando direcciones MAC...\nPulse aceptar para terminar."
 		sudo killall tcpdump
-		(perl -ane 'print "\U$F[0]\n"' $tmp_file|sort|uniq) > $result_file
+		(perl -ane 'print "\U$F[0]\n"' $tmp_file|awk '!x[$0]++') > $result_file
 		sed -i '/^$/d' "$result_file"
 		rm -f "$tmp_file"
 		
@@ -198,23 +203,25 @@ get_static_red()
 {	
 	IPADDR=$(ifconfig eth0| grep -w inet |grep -v 127.0.0.1| awk '{print $2}' | cut -d ":" -f 2)
 	NETMASK=$(ifconfig eth0 | grep -w inet |grep -v 127.0.0.1| awk '{print $4}' | cut -d ":" -f 2)
+	GATEWAY=$(route -n | grep 'UG[ \t]' | awk '{print $2}')
 	IPADDR_ICDR=$(ip -o -f inet addr show eth0 | awk '/scope global/ {print $4}')
+	
+	return 0
 }
 
 set_dhcp_red()
 {
-
+	local iface=""
+	iface="$1"
     echo ""  >> "$INTERFACES_FILE"
-    echo "allow-hotplug eth1" >> "$INTERFACES_FILE"
-    echo "iface eth1 inet dhcp" >> "$INTERFACES_FILE"
+    echo "allow-hotplug $iface" >> "$INTERFACES_FILE"
+    echo "iface $iface inet dhcp" >> "$INTERFACES_FILE"
   
-return 0
+	return 0
 }
-
 
 set_static_red()
 { 
-
     # set_static_red IP SUBNET GATEWAY
     echo "auto lo" > "$INTERFACES_FILE"
     echo "iface lo inet loopback" >> "$INTERFACES_FILE"
@@ -223,46 +230,42 @@ set_static_red()
     echo "iface eth0 inet static" >> "$INTERFACES_FILE"
     echo "  address $1" >> "$INTERFACES_FILE"
     echo "  netmask $2" >> "$INTERFACES_FILE"
-    #--> En nuestra arquitectura el Gateway es asignado por DHCP en la interfaz eth1, descomentar para cambios de arquitectura de red
-    #echo "  gateway $3" >> "$INTERFACES_FILE"
+    echo "  gateway $3" >> "$INTERFACES_FILE"
     
     IPADDR=$1
     NETMASK=$2
-    #GATEWAY=$3
+    GATEWAY=$3
   
-return 0  
+	return 0  
 }
 
 function configurar_red()
 {
 	local if_type=$(get_nombrado_interfaces)
 	
-	
 	if [[ $(echo $if_type | grep Clásico) || "$1" = "nocheck" ]]; then
 		#Estan normales
-		_mensaje "Se van a configurar las interfaces de red:\n\neth0 --> con IP fija para conectar con los clientes.\neth1 --> con DHCP para la salida a internet"
+		_mensaje "Se van a configurar las interfaces de red:\n\neth0 --> con dirección IP estática."
 		if [[ $(ip link show eth0) || "$1" = "nocheck" ]]; then
 		
-			local ipaddr=$(_formulario "Indique la dirección IP para eth0:" "10.10.10.10")
+			local ipaddr=$(_formulario "Indique la dirección IP para eth0:" "192.168.1.110")
 			local netmask=$(_formulario "Indique la máscara de Subred:" "255.255.255.0")
+			local gateway=$(_formulario "Indique la dirección de Gateway:" "192.168.1.1") 
 			
-			#--> En nuestra arquitectura el Gateway es asignado por DHCP en la interfaz eth1, descomentar para cambios de arquitectura de red
-			#local gateway=$(_formulario "Indique la dirección de Gateway:" "10.10.10.1") 
+			set_static_red "$ipaddr" "$netmask" "$gateway"
+			_mensaje "La interfaz eth0 ha sido configurada correctamente:\n\nDirección IP --> $ipaddr\nMáscara de Subred --> $netmask\nGateway --> $gateway"
 			
-			set_static_red "$ipaddr" "$netmask"
-			_mensaje "La interfaz eth0 ha sido configurada correctamente:\n\nDirección IP --> $ipaddr\nMáscara de Subred --> $netmask"
-			
-			if [[ $(ip link show eth1) || "$1" = "nocheck" ]]; then
-			
-				set_dhcp_red
-				_mensaje "La interfaz eth1 ha sido configurada correctamente con DHCP."
-			
-				[ "$1" = "nocheck" ] || { _info "Reiniciando servicio de red...";systemctl restart networking &> /dev/null;ifup eth0 &> /dev/null;ifup eth1 &> /dev/null; }
-			
-			else
-				_mensaje "¡Error! La interfaz eth1 no existe"
-				return 1
-			fi
+			#if [[ $(ip link show eth1) || "$1" = "nocheck" ]]; then
+			#
+			#	set_dhcp_red
+			#	_mensaje "La interfaz eth1 ha sido configurada correctamente con DHCP."
+			#
+			#	[ "$1" = "nocheck" ] || { _info "Reiniciando servicio de red...";systemctl restart networking &> /dev/null;ifup eth0 &> /dev/null;ifup eth1 &> /dev/null; }
+			#
+			#else
+			#	_mensaje "¡Error! La interfaz eth1 no existe"
+			#	return 1
+			#fi
 		else
 			_mensaje "¡Error! La interfaz eth0 no existe"
 			return 1
@@ -272,12 +275,11 @@ function configurar_red()
 		return 1
 	fi
 	
-return 0
+	return 0
 }
 
 function set_nombrado_interfaces()
 {
-
 	local flag_file=$CONF_DIR/if_conf
 
 	local if_type=$(get_nombrado_interfaces)
@@ -300,7 +302,7 @@ function set_nombrado_interfaces()
 		fi
 		clear
 		_info "Finalizando instalación y reiniciando..."
-		(sleep 15 && reboot)&
+		(sleep 10 && reboot)&
 		exit
 	else
 		return 0
@@ -339,7 +341,7 @@ function set_ip_forwarding()
 		_mensaje "¡Error! El Router virtual ya está activado."
 		return 1
 	fi
-return 0	
+	return 0	
 }
 
 function unset_ip_forwarding()
@@ -361,7 +363,7 @@ function unset_ip_forwarding()
 		_mensaje "¡Error! El Router virtual no está activado."
 		return 1
 	fi
-return 0	
+	return 0	
 }
 
 function enviar_fichero()
@@ -383,28 +385,28 @@ function enviar_fichero()
 	sshpass -p "$pass" scp "$file" "$user"@"$host":"$dest_dir"
 	
 	[ $? -eq 0 ] && { _mensaje "Fichero $file enviado con éxito a $host!";return 0; } || { _mensaje "Error al enviar fichero"; return 1; }
-	
 }
 
 function generar_certificado()
 {
-	rm -f /etc/apache/m23/server.crt &> /dev/null
-	openssl req -new -x509 -nodes -sha256 -days 365 -key /etc/apache/m23/server.key \
-		-subj "/C=ES/ST=Madrid/L=Madrid/O=DTE_ETSIST_UPM/CN=www.etsist.upm.es/" \
+	#get_static_red()
+	
+	#rm -f /etc/apache/m23/server.crt &> /dev/null
+	#openssl req -new -x509 -nodes -sha256 -days 365 -key /etc/apache/m23/server.key \
+		-subj "/C=ES/ST=Madrid/L=Madrid/O=DTE_ETSIST_UPM/CN=$IPADDR" \
 		-out /etc/apache/m23/server.crt
-		
+	
+	sed -i 's/newIP="$(hostname.*/newIP="$(hostname -I | head -n1 | cut -d " " -f1)"/' /m23/bin/mkCert.sh
+	
+	/m23/bin/mkCert.sh	
 	if [ $? -eq 0 ]; then
 		
-		_mensaje "Generado con éxito el certificado /etc/apache/m23/server.crt con validez de 1 año"
+		_mensaje "Generado con éxito certificados SSL"
 		_info "Reiniciando servidor Apache..."
 		systemctl restart apache2
 		
 		return 0
 	else
-		_mensaje "¡Error! No se ha podido generar el certificado"
-	fi
-		
-	
-	
-		
+		_mensaje "¡Error! No se ha podido generar los certificados SSL"
+	fi	
 }

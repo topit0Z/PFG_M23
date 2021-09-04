@@ -1,5 +1,3 @@
 #!/bin/bash
 # Este script se ejecuta tras la instalación del paquete dte-admin
 /usr/bin/DTE-Admin-first-launcher
-
-
