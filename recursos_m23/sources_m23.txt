@@ -1,0 +1,40 @@
+# Fichero de repositorios personalizado para usar con el administrador m23
+# Creador: Pedro Requena <pf.requena@alumnos.upm.es> en agosto de 2021
+# Distribución: Kubuntu 20.04
+
+#mirror: ftp://archive.ubuntu.com/ubuntu
+#alternativeFS: ext4
+#supportedFS: ext2, ext3, ext4, reiserfs
+#supportedEFI: amd64
+
+#Repositorios principales de Ubuntu
+deb http://es.archive.ubuntu.com/ubuntu/ focal main restricted universe multiverse
+deb http://es.archive.ubuntu.com/ubuntu/ focal-updates main restricted universe multiverse
+deb http://es.archive.ubuntu.com/ubuntu/ focal-backports main restricted universe multiverse
+deb http://security.ubuntu.com/ubuntu focal-security main restricted universe multiverse
+
+#Repositorio de m23
+deb http://m23debs.goos-habermann.de ./
+
+#Repositorios adicionales para el SW de los laboratorios DTE #
+#GNS3
+deb http://ppa.launchpad.net/gns3/ppa/ubuntu focal main
+# deb-src http://ppa.launchpad.net/gns3/ppa/ubuntu focal main
+
+#Google Chrome
+deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main
+
+#Microsoft Teams
+deb [arch=amd64] https://packages.microsoft.com/repos/ms-teams stable main
+
+#Microsoft Visual Studio
+deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main
+
+#KiCad
+deb http://ppa.launchpad.net/kicad/kicad-dev-nightly/ubuntu focal main
+
+#Asbru CM
+deb https://dl.cloudsmith.io/public/asbru-cm/release/deb/ubuntu focal main
+
+#TeamViewer
+deb http://linux.teamviewer.com/deb stable main

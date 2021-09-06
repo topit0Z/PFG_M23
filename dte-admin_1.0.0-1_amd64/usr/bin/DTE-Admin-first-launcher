@@ -16,4 +16,34 @@ source $BIN_DIR/DTE-Admin-funciones
 
 ## Main ##
 make_backups
-set_nombrado_interfaces
+
+local reboot=""
+
+if (_confirmacion "¿Desea cambiar el criterio de nombrado de las interfaces de red?\n"); then
+	
+	set_nombrado_interfaces "first_launcher"
+	
+	reboot="1"
+	
+	if (_confirmacion "¿Desea configurar la red?\n"); then
+	
+		configurar_red "nocheck"
+	fi
+fi
+
+if (_confirmacion "¿Desea activar el acceso root por SSH?"); then
+	
+	acceso_root_ssh
+fi
+
+if [ "$reboot" -eq 1 ]; then
+
+	_info "Finalizando instalación y reiniciando el equipo..."
+	(sleep 8 && reboot)&
+
+else
+	_info "Finalizando instalación..."
+fi
+ 
+
+exit 0

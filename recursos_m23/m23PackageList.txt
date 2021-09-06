@@ -1,0 +1,1 @@
+audacity codeblocks-contrib filezilla git gns3-gui google-chrome-stable linphone linphone-common openjdk-11-jre openjdk-16-jre openjdk-8-jre teams

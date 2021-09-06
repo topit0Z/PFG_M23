@@ -23,7 +23,7 @@ function _confirmacion()
 {
 
 	whiptail --title "$TITULO" \
-	--yesno "$1" 10 78
+	--yesno "$1" 10 78 "$2"
 }
 
 function _info()
@@ -83,6 +83,7 @@ function make_backups()
 	cp -f /etc/default/grub /etc/default/grub.dte_bak
 	cp -f /etc/network/interfaces /etc/network/interfaces.dte_bak
 	cp -f /etc/sysctl.conf /etc/sysctl.conf.dte_bak
+	cp -f /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
 	
 return 0
 }
@@ -201,18 +202,18 @@ return 0
 
 get_static_red()
 {	
-	IPADDR=$(ifconfig eth0| grep -w inet |grep -v 127.0.0.1| awk '{print $2}' | cut -d ":" -f 2)
-	NETMASK=$(ifconfig eth0 | grep -w inet |grep -v 127.0.0.1| awk '{print $4}' | cut -d ":" -f 2)
+	local iface=""; iface="$1"
+	IPADDR=$(ifconfig "$iface"| grep -w inet |grep -v 127.0.0.1| awk '{print $2}' | cut -d ":" -f 2)
+	NETMASK=$(ifconfig "$iface" | grep -w inet |grep -v 127.0.0.1| awk '{print $4}' | cut -d ":" -f 2)
 	GATEWAY=$(route -n | grep 'UG[ \t]' | awk '{print $2}')
-	IPADDR_ICDR=$(ip -o -f inet addr show eth0 | awk '/scope global/ {print $4}')
+	IPADDR_ICDR=$(ip -o -f inet addr show "$iface" | awk '/scope global/ {print $4}')
 	
 	return 0
 }
 
 set_dhcp_red()
 {
-	local iface=""
-	iface="$1"
+	local iface=""; iface="$1"
     echo ""  >> "$INTERFACES_FILE"
     echo "allow-hotplug $iface" >> "$INTERFACES_FILE"
     echo "iface $iface inet dhcp" >> "$INTERFACES_FILE"
@@ -222,19 +223,25 @@ set_dhcp_red()
 
 set_static_red()
 { 
-    # set_static_red IP SUBNET GATEWAY
-    echo "auto lo" > "$INTERFACES_FILE"
-    echo "iface lo inet loopback" >> "$INTERFACES_FILE"
-    echo ""  >> "$INTERFACES_FILE"
-    echo "auto eth0" >> "$INTERFACES_FILE"
-    echo "iface eth0 inet static" >> "$INTERFACES_FILE"
-    echo "  address $1" >> "$INTERFACES_FILE"
-    echo "  netmask $2" >> "$INTERFACES_FILE"
-    echo "  gateway $3" >> "$INTERFACES_FILE"
-    
-    IPADDR=$1
-    NETMASK=$2
-    GATEWAY=$3
+	local iface=""; iface="$1"
+	
+	IPADDR="$2"
+    NETMASK="$3"
+    GATEWAY="$4"
+	
+	if [ "$iface" = "" ]; then #Configuración por defecto
+		iface="eth0"
+		echo "auto lo" > "$INTERFACES_FILE"
+		echo "iface lo inet loopback" >> "$INTERFACES_FILE"
+	fi
+
+	echo ""  >> "$INTERFACES_FILE"
+	echo "auto $iface" >> "$INTERFACES_FILE"
+	echo "iface $iface inet static" >> "$INTERFACES_FILE"
+	echo "  address $IPADDR" >> "$INTERFACES_FILE"
+	echo "  netmask $NETMASK" >> "$INTERFACES_FILE"
+	[ "$GATEWAY" != "" ] && echo "  gateway $GATEWAY" >> "$INTERFACES_FILE"  
+	
   
 	return 0  
 }
@@ -243,43 +250,60 @@ function configurar_red()
 {
 	local if_type=$(get_nombrado_interfaces)
 	
-	if [[ $(echo $if_type | grep Clásico) || "$1" = "nocheck" ]]; then
-		#Estan normales
-		_mensaje "Se van a configurar las interfaces de red:\n\neth0 --> con dirección IP estática."
-		if [[ $(ip link show eth0) || "$1" = "nocheck" ]]; then
+	if [[ $(echo $if_type | grep Clásico) || "$1" = "nocheck" ]]; then #Se requiere nombrado clásico para la configuración
 		
-			local ipaddr=$(_formulario "Indique la dirección IP para eth0:" "192.168.1.110")
-			local netmask=$(_formulario "Indique la máscara de Subred:" "255.255.255.0")
-			local gateway=$(_formulario "Indique la dirección de Gateway:" "192.168.1.1") 
+		#Configuración por defecto
+		if (_confirmacion "¿Desea aplicar la configuración por defecto?\n\neth0 --> con dirección IP estática."); then
+		
+			if [[ $(ip link show eth0) || "$1" = "nocheck" ]]; then
 			
-			set_static_red "$ipaddr" "$netmask" "$gateway"
-			_mensaje "La interfaz eth0 ha sido configurada correctamente:\n\nDirección IP --> $ipaddr\nMáscara de Subred --> $netmask\nGateway --> $gateway"
+				local ipaddr=""; ipaddr=$(_formulario "Indique la dirección IP para eth0:" "192.168.1.110")
+				local netmask=""; netmask=$(_formulario "Indique la máscara de Subred:" "255.255.255.0")
+				local gateway=""; gateway=$(_formulario "Indique la dirección de Gateway:" "192.168.1.1") 
+				
+				set_static_red "" "$ipaddr" "$netmask" "$gateway"
+				
+				_mensaje "La interfaz eth0 ha sido configurada correctamente:\n\nDirección IP --> $ipaddr\nMáscara de Subred --> $netmask\nGateway --> $gateway"
+			else
+				_mensaje "¡Error! La interfaz eth0 no existe"
+				return 1
+			fi
+		fi
+		if (_confirmacion "¿Desea realizar alguna otra configuración?" "--defaultno"); then
 			
-			#if [[ $(ip link show eth1) || "$1" = "nocheck" ]]; then
-			#
-			#	set_dhcp_red
-			#	_mensaje "La interfaz eth1 ha sido configurada correctamente con DHCP."
-			#
-			#	[ "$1" = "nocheck" ] || { _info "Reiniciando servicio de red...";systemctl restart networking &> /dev/null;ifup eth0 &> /dev/null;ifup eth1 &> /dev/null; }
-			#
-			#else
-			#	_mensaje "¡Error! La interfaz eth1 no existe"
-			#	return 1
-			#fi
-		else
-			_mensaje "¡Error! La interfaz eth0 no existe"
-			return 1
+			local iface_b=""; iface_b=$(_formulario "Indique el nombre de la interfaz que desea configurar:" "eth1")
+			if [[ $(ip link show "$iface_b") ]]; then
+				if (_confirmacion "¿Desea configurar la interfaz con DHCP?"); then
+					
+					set_dhcp_red "$iface_b"
+				else
+					ipaddr=$(_formulario "Indique la dirección IP para "$iface_b":" "10.10.10.5")
+					netmask=$(_formulario "Indique la máscara de Subred:" "255.255.255.0")
+					gateway=$(_formulario "Indique la dirección de Gateway:" "10.10.10.1")
+					
+					set_static_red "$iface_b" "$ipaddr" "$netmask" "$gateway"
+				fi
+			else
+				_mensaje "¡Error! La interfaz $iface_b no existe"
+				return 1
+			fi
 		fi
 	else
 		_mensaje "¡Error! Debe cambiar el nombrado de interfaces a Clásico para poder configurarlas con el DTE Admin."
 		return 1
 	fi
 	
+	_mensaje "Configuración de red aplicada."
+	
 	return 0
 }
 
 function set_nombrado_interfaces()
 {
+	local mode=""
+	
+	[ $1 = "first_launcher" ] && mode="$1"
+	
 	local flag_file=$CONF_DIR/if_conf
 
 	local if_type=$(get_nombrado_interfaces)
@@ -296,14 +320,13 @@ function set_nombrado_interfaces()
 			sed -ie 's/GRUB_CMDLINE_LINUX="\(.*\)"/GRUB_CMDLINE_LINUX=""/' /etc/default/grub
 			grub-mkconfig -o /boot/grub/grub.cfg &> /dev/null
 		fi
-		_mensaje "El nombrado de las interfaces de red se ha cambiado de $if_type a $if_type_final\n\nA continuación se reiniciará el equipo para aplicar los cambios."
-		if (_confirmacion "¿Desea configurar la red antes de reniciar?\n De esta forma podrá recuperar su conexión SSH"); then
-			configurar_red "nocheck"
+		_mensaje "El nombrado de las interfaces de red se ha cambiado de $if_type a $if_type_final"
+		if [ "$mode" != "first_launcher"]; then
+			_mensaje "A continuación se reiniciará el equipo para aplicar los cambios."
+			sleep 2
+			reboot
+			return 0
 		fi
-		clear
-		_info "Finalizando instalación y reiniciando..."
-		(sleep 10 && reboot)&
-		exit
 	else
 		return 0
 	fi	
@@ -315,6 +338,7 @@ function set_ip_forwarding()
 	if [ ! -f "$FLAG_CONF_ROUTER_FILE" ]; then
 
 		if [[ "IPADDR" != "" && "NETMASK" != "" || "$1" = "nocheck" ]]; then
+			_mensaje "Asegúrese de tener configurada la interfaz eth0 en la red interna y la interfaz eth1 con salida a internet por NAT en otra subred"
 			if(_confirmacion "Activar el Router virtual permitirá que los clientes accedan a internet a través de esta máquina. ¿Desea continuar?"); then
 				
 				# Primero, lo activamos a nivel de kernel
@@ -409,4 +433,35 @@ function generar_certificado()
 	else
 		_mensaje "¡Error! No se ha podido generar los certificados SSL"
 	fi	
+}
+
+function acceso_root_ssh
+{
+
+	if [ ! -f "$FLAG_CONF_SSH_ROOT_FILE" ]; then
+
+		if (_confirmacion "Permitir el acceso por SSH al usuario root puede comprometer la seguridad del sistema. ¿Desea continuar?"); then
+		
+			sed -i 's/#PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+			
+			touch "$FLAG_CONF_SSH_ROOT_FILE"
+			
+			systemctl restart sshd 
+			
+			[ $? -eq 0 ] && _mensaje "Cambios aplicados correctamente" || { _mensaje "Error al reiniciar el servicio sshd"; return 1; }
+		fi
+	else
+		if (_confirmacion "El acceso root por SSH está activado actualmente. ¿Desa desactivarlo?"); then
+		
+			sed -i 's/PermitRootLogin.*/#PermitRootLogin yes/' /etc/ssh/sshd_config
+			
+			rm -f "$FLAG_CONF_SSH_ROOT_FILE"
+			
+			systemctl restart sshd 
+			
+			[ $? -eq 0 ] && _mensaje "Cambios aplicados correctamente" || { _mensaje "Error al reiniciar el servicio sshd"; return 1; }
+		fi
+	fi
+	
+	return 0
 }
