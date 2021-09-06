@@ -1,1 +1,1 @@
-audacity codeblocks-contrib filezilla git gns3-gui google-chrome-stable linphone linphone-common openjdk-11-jre openjdk-16-jre openjdk-8-jre teams
+asbru-cm audacity code codeblocks-contrib filezilla git git-cola gns3-gui google-chrome-stable kicad kicad-doc-es kicad-nightly-templates libpcap0.8 linphone linphone-common m23ImportarGPGRepos m23SNAPInstall nomacs openjdk-11-jre openjdk-16-jre openjdk-8-jre openocd pcaputils playonlinux putty snapd stlink-gui teams teamviewer unixodbc wine-stable wireshark-qt
