@@ -293,9 +293,9 @@ function configurar_red()
 		return 1
 	fi
 	
-	_mensaje "Configuración de red aplicada."
+	systemctl restart networking
 	
-	return 0
+	[ $? -eq 0 ] && { _mensaje "Configuración de red aplicada.";  return 0; } && { _mensaje "Error al reiniciar el servicio de red";  return 1; }
 }
 
 function set_nombrado_interfaces()
@@ -334,7 +334,7 @@ function set_nombrado_interfaces()
 
 function set_ip_forwarding()
 {
-	get_static_red
+	get_static_red "eht0"
 	if [ ! -f "$FLAG_CONF_ROUTER_FILE" ]; then
 
 		if [[ "IPADDR" != "" && "NETMASK" != "" || "$1" = "nocheck" ]]; then
