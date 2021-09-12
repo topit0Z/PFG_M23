@@ -25,7 +25,7 @@ deb http://ppa.launchpad.net/gns3/ppa/ubuntu focal main
 deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main
 
 #Microsoft Teams
-deb [arch=amd64] https://packages.microsoft.com/repos/ms-teams stable main
+deb https://packages.microsoft.com/repos/ms-teams stable main
 
 #Microsoft Visual Studio
 deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main
