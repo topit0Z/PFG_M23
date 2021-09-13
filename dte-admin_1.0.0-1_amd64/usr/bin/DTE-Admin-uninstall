@@ -3,14 +3,15 @@
 BIN_DIR=/usr/bin
 LIB_DIR=/var/lib
 
-#Cargamos las variables
+#Carga de variables globales
 source $LIB_DIR/DTE-Admin-globals
 
-#Cargamos las funciones
+#Carga de funciones
 source $BIN_DIR/DTE-Admin-funciones
 
 
-#Limpiamos el directorio de configuración
+#Limpieza del directorio de configuración
 rm -rf $CONF_DIR/*
 
+#Restauración de las copias de seguridad
 restore_backups

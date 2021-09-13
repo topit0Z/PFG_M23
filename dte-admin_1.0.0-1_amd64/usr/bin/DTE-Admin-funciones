@@ -9,6 +9,8 @@
 
 ### Funciones auxiliares para el manejo de los diálogos whiptail ###
 
+#_contraseña()
+#	Formulario de petición de contraseña 
 function _contraseña()
 {
 	local respuesta=""
@@ -19,16 +21,21 @@ function _contraseña()
 	echo $respuesta
 }
 
+#_confirmacion()
+#	Formulario de confirmación Sí/no
+#	$1 Texto de la confirmación
+#	$2 Valor por defecto
 function _confirmacion()
 {
-
 	whiptail --title "$TITULO" \
 	--yesno "$1" 10 78 "$2"
 }
 
+#_info()
+#	Mensaje de información
+#	$1 Texto del mensaje
 function _info()
 {
-
 	local TERM=ansi #Debemos cambiar temporalmente el tipo de Terminal debido a un bug de whiptail infobox con xterm
 	
 	txt="$1"
@@ -37,6 +44,10 @@ function _info()
 	--infobox "$txt" 10 70
 }
 
+#_leer_fichero()
+#	Diálogo para mostrar el contenido de un fichero de texto
+#	$1 Subtítulo del diálogo
+#	$2 Ruta del fichero de texto
 function _leer_fichero()
 {
 	local subtitulo=""
@@ -49,9 +60,11 @@ function _leer_fichero()
 	--scrolltext
 }
 
+#_mensaje()
+#	Mensaje de información con botón de Aceptar
+#	$1 Texto del mensaje
 function _mensaje()
 {
-
 	local msg="$1"
 	
 	whiptail --title "$TITULO" \
@@ -59,9 +72,12 @@ function _mensaje()
 	15 70
 }
 
+#_formulario()
+#	Formulario estándar para solicitar información al usuario
+#	$1 Texto de solicitud
+#	$2 Valor por defecto
 function _formulario()
 {
-
 	local pregunta="$1"
 	local default="$2"
 
@@ -69,25 +85,27 @@ function _formulario()
                      --inputbox "$pregunta" 10 70 "$default" \
                      3>&1 1>&2 2>&3)
                      
-        echo $respuesta
+    echo $respuesta
 }
 
 ##########
 
 ### Funciones generales ###
 
-
+#make_backups()
+#	Función para la creación de copias de seguridad
 function make_backups()
 {
-
 	cp -f /etc/default/grub /etc/default/grub.dte_bak
 	cp -f /etc/network/interfaces /etc/network/interfaces.dte_bak
 	cp -f /etc/sysctl.conf /etc/sysctl.conf.dte_bak
 	cp -f /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
 	
-return 0
+	return 0
 }
 
+#_restore_network()
+#	Función para la restauración del estado original de las interfaces de red
 function _restore_network()
 {
 
@@ -96,26 +114,33 @@ function _restore_network()
 	
 	mv /etc/sysctl.conf.dte_bak /etc/sysctl.conf
 		
-return 0
+	return 0
 }
 
+#_restore_grub()
+#	Función para la restauración del estado original del GRUB - Opciones de arranque del sistema
 function _restore_grub()
 {
 	mv /etc/default/grub.dte_bak /etc/default/grub
 	grub-mkconfig -o /boot/grub/grub.cfg
 
-return 0
+	return 0
 }
 
+#_restore_grub()
+#	Función para la restauración de las copias de seguridad
 function restore_backups()
 {
-
 	_restore_network
 	_restore_grub
 
-return 0
+	return 0
 }
 
+# instalar_m23()
+#	Función para la instalación de m23 y sus dependencias
+#	return 0 --> si ya está instalado || si la instalación se ha completado satisfactoriamente
+#	return 1 --> La instalación ha fallado
 function instalar_m23()
 {
 	if [ ! -f "$FLAG_CONF_M23_FILE" ]; then
@@ -128,16 +153,10 @@ function instalar_m23()
 		#Actualizamos la base de datos de APT
 		apt update
 		
-		#export DEBIAN_FRONTEND="noninteractive"
 		#Instalamos M23 y sus dependencias
 		apt install -y m23
+		
 		local ret=$?
-		#export DEBIAN_FRONTEND=""
-		
-		#sed -i 's/newIP="$(hostname.*/newIP="$(hostname -I | head -n1 | cut -d " " -f1)"/' mkCert.sh
-		
-		#dpkg --configure -a
-		
 		
 		[ $ret -eq 0 ] && { _mensaje "La instalación de m23 ha finalizado.";touch "$FLAG_CONF_M23_FILE";touch $FLAG_CONF_M23_FILE;return 0; } || { _mensaje "¡Error! La instalación de m23 ha fallado."; return 1; }
 	else
@@ -146,35 +165,40 @@ function instalar_m23()
 	fi
 }
 
-# Escanea la red de área local en busca de clientes 
-# que trate de realizar un arranque PXE
-# y almacena sus direcciones MAC en el fichero $result_file
+#escanear_MAC()
+# 	Escanea la red de área local en busca de clientes 
+# 	que trate de realizar un arranque PXE
+# 	y almacena sus direcciones MAC en el fichero $result_file
+#	return 0 --> se ha podidor realizar la captura, independientemente de si se han encontrado o no clientes
+#	return 1 --> las interfaces de red no están configuradas adecuadamente
 function escanear_MAC()
 {
-
 	if [[ $(ip link show eth0) ]]; then
 
 		local tmp_file=/tmp/macs_tmp.txt
 		
-		local result_file=/tmp/macs.txt
+		local result_file=$(_formulario "Indique el fichero dónde guardar los resultados:" "$HOME/mac.list" )
 		
-		local result_file=$(_formulario "Indique el fichero dónde guardar los resultados:" "$HOME/mac.list" ) #Acabar esta mierda
+		#Borramos el fichero de resultados para no duplicar direcciones MAC
+		[ -f "$result_file" ] && rm -f $result_file 
 		
-		[ -f "$result_file" ] && rm -f $result_file #Borramos el fichero de resultados para no duplicar direcciones MAC
-		
-		(tcpdump -i eth0 -qtel broadcast and port bootpc >$tmp_file 2>/dev/null)& #Analizamos el tráfico de red en busca de arranques PXE
+		#Analizamos el tráfico de red en busca de arranques PXE
+		(tcpdump -i eth0 -qtel broadcast and port bootpc >$tmp_file 2>/dev/null)& 
 		_mensaje "Escaneando direcciones MAC...\nPulse aceptar para terminar."
+		#Cuando el usuario pulse Aceptar, se mata al proceso para acabar la captura
 		sudo killall tcpdump
+		
+		#Se filtra y ordena el contenido de los resultados
 		(perl -ane 'print "\U$F[0]\n"' $tmp_file|awk '!x[$0]++') > $result_file
 		sed -i '/^$/d' "$result_file"
 		rm -f "$tmp_file"
 		
 		if [ -s "$result_file" ]; then
-	      		# The file is not-empty.
+	      	#El fichero de resultados NO está vacío
 			_leer_fichero "Direcciones MAC encontradas:" $result_file
 			_mensaje "Las direcciones MAC se han guardado en $result_file"
 		else
-			# The file is empty.
+			#El fichero de resultados está vacío
 			_mensaje "No se han encontrado clientes."
 		fi
 	else
@@ -182,10 +206,12 @@ function escanear_MAC()
 		return 1
 	fi
 
-return 0
+	return 0
 }
 
-
+#get_nombrado_interfaces()
+#	Función para obtener el criterio de nombrado de las interfaces de red
+#	que se está utilizando.
 function get_nombrado_interfaces()
 {
 
@@ -197,9 +223,12 @@ function get_nombrado_interfaces()
 	
 	echo $if_type
 
-return 0
+	return 0
 }
 
+#get_static_red()
+#	Función para obtener los atributos de red 
+#	$1 Nombre de la interfaz de red
 get_static_red()
 {	
 	local iface=""; iface="$1"
@@ -211,6 +240,9 @@ get_static_red()
 	return 0
 }
 
+#set_dhcp_red()
+#	Función para configurar una interfaz de red con DHCP
+#	$1 Nombre de la interfaz de red
 set_dhcp_red()
 {
 	local iface=""; iface="$1"
@@ -221,6 +253,12 @@ set_dhcp_red()
 	return 0
 }
 
+#set_static_red()
+#	Función para configurar una interfaz de red de forma estática
+#	$1 Nombre de la interfaz de red
+#	$2 Dirección IP
+#	$3 Máscara de subred
+#	$4 Dirección de la puerta de enlace
 set_static_red()
 { 
 	local iface=""; iface="$1"
@@ -246,6 +284,10 @@ set_static_red()
 	return 0  
 }
 
+#configurar_red()
+#	Función para la configuración global de las interfaces de red
+#	return 1 --> Si alguna de las interfaces no existe || Si el criterio de nombrado no es Clásico || No se puede reiniciar el servicio de red
+#	return 0 --> Las interfaces se configuran correctamente
 function configurar_red()
 {
 	local if_type=$(get_nombrado_interfaces)
@@ -269,6 +311,7 @@ function configurar_red()
 				return 1
 			fi
 		fi
+		#Configuración/es adicional/es
 		if (_confirmacion "¿Desea realizar alguna otra configuración?" "--defaultno"); then
 			
 			local iface_b=""; iface_b=$(_formulario "Indique el nombre de la interfaz que desea configurar:" "eth1")
@@ -293,11 +336,15 @@ function configurar_red()
 		return 1
 	fi
 	
+	#Reinicio del servicio
 	systemctl restart networking
 	
 	[ $? -eq 0 ] && { _mensaje "Configuración de red aplicada.";  return 0; } && { _mensaje "Error al reiniciar el servicio de red";  return 1; }
 }
 
+#set_nombrado_interfaces()
+#	Función para cambiar el criterio de nombrado de las interfaces de red
+#	$1 Flag para informar de primera ejecución.
 function set_nombrado_interfaces()
 {
 	local mode=""
@@ -332,6 +379,10 @@ function set_nombrado_interfaces()
 	fi	
 }
 
+#set_ip_forwarding()
+#	Función para activar el reenvío de paquetes
+#	return 1 --> Si las interfaces de red no están configuradas adecuadamente || Si el reenvío ya está activado
+#	return 0 --> El reenvío de paquetes se ha activado correctamente
 function set_ip_forwarding()
 {
 	get_static_red "eht0"
@@ -368,6 +419,10 @@ function set_ip_forwarding()
 	return 0	
 }
 
+#unset_ip_forwarding()
+#	Función para desactivar el reenvío de paquetes
+#	return 1 --> Si el reenvío no está activado
+#	return 0 --> El reenvío se ha desactivado correctamente
 function unset_ip_forwarding()
 {
 	if [ -f "$FLAG_CONF_ROUTER_FILE" ]; then
@@ -390,6 +445,10 @@ function unset_ip_forwarding()
 	return 0	
 }
 
+#enviar_fichero()	
+#	Función para enviar ficheros por SCP
+#	return 1 --> Si se ha producido algún error en el envío
+#	return 0 --> El fichero se ha enviado correctamente
 function enviar_fichero()
 {
 	local file=""
@@ -411,35 +470,15 @@ function enviar_fichero()
 	[ $? -eq 0 ] && { _mensaje "Fichero $file enviado con éxito a $host!";return 0; } || { _mensaje "Error al enviar fichero"; return 1; }
 }
 
-function generar_certificado()
-{
-	#get_static_red()
-	
-	#rm -f /etc/apache/m23/server.crt &> /dev/null
-	#openssl req -new -x509 -nodes -sha256 -days 365 -key /etc/apache/m23/server.key \
-		-subj "/C=ES/ST=Madrid/L=Madrid/O=DTE_ETSIST_UPM/CN=$IPADDR" \
-		-out /etc/apache/m23/server.crt
-	
-	sed -i 's/newIP="$(hostname.*/newIP="$(hostname -I | head -n1 | cut -d " " -f1)"/' /m23/bin/mkCert.sh
-	
-	/m23/bin/mkCert.sh	
-	if [ $? -eq 0 ]; then
-		
-		_mensaje "Generado con éxito certificados SSL"
-		_info "Reiniciando servidor Apache..."
-		systemctl restart apache2
-		
-		return 0
-	else
-		_mensaje "¡Error! No se ha podido generar los certificados SSL"
-	fi	
-}
-
-function acceso_root_ssh
+#acceso_root_ssh()
+#	Función para activar o desactivar el acceso SSH con el usuario root
+#	return 1 --> Si se produce error al reiniciar el servicio sshd
+#	return 0 --> Los cambios y el reinicio del servicio se realizan correctamente
+function acceso_root_ssh()
 {
 
 	if [ ! -f "$FLAG_CONF_SSH_ROOT_FILE" ]; then
-
+		#El acceso root está desactivado
 		if (_confirmacion "Permitir el acceso por SSH al usuario root puede comprometer la seguridad del sistema. ¿Desea continuar?"); then
 		
 			sed -i 's/#PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
@@ -451,6 +490,7 @@ function acceso_root_ssh
 			[ $? -eq 0 ] && _mensaje "Cambios aplicados correctamente" || { _mensaje "Error al reiniciar el servicio sshd"; return 1; }
 		fi
 	else
+		#El acceso root está activado
 		if (_confirmacion "El acceso root por SSH está activado actualmente. ¿Desa desactivarlo?"); then
 		
 			sed -i 's/PermitRootLogin.*/#PermitRootLogin yes/' /etc/ssh/sshd_config
