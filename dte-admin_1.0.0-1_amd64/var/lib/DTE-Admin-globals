@@ -1,20 +1,38 @@
 #!/bin/bash
+#	DTE-Admin-globals
+#	Pedro Requena <pf.requena@alumnos.upm.es>
 # Variables globales para los scripts DTE Admin
 # BIN_DIR y LIB_DIR se encuentran en los scripts de ejecución por necesidades del diseño
 #
 
+#Nombre del programa
 NOMBRE="DTE Admin"
+
+#Versión del programa
 VERSION=1.0.0
+
+#Título para los diálogos
 TITULO="$NOMBRE $VERSION"
 
+#Directorio de configuración
 CONF_DIR=/etc/DTE-Admin
+
+#Fichero flag para la configuración de red
 FLAG_CONF_RED_FILE=$CONF_DIR/flag_conf_red
+
+#Fichero flag para la configuración del reenvío de paquetes
 FLAG_CONF_ROUTER_FILE=$CONF_DIR/flag_conf_router
+
+#Fichero flag para la instalación de m23
 FLAG_CONF_M23_FILE=$CONF_DIR/flag_conf_m23
+
+#Fichero flag para la configuración del acceso root por SSH
 FLAG_CONF_SSH_ROOT_FILE=$CONF_DIR/flag_conf_ssh_root
 
+#Fichero de configuración de las interfaces de red
 INTERFACES_FILE=/etc/network/interfaces
 
+#Parámetros de configuración estáticos de las interfaces de red
 IPADDR=""
 NETMASK=""
 GATEWAY=""

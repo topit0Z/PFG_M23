@@ -1,45 +1,54 @@
 #!/bin/bash
 #	DTE-Admin-first-launcher
+#	Pedro Requena <pf.requena@alumnos.upm.es>
+#
 # Script que se ejecuta al instalar el paquete DTE-Admin
 # para realizar configuraciones iniciales
 #
-#
+
+
+#Directorio de binarios
 BIN_DIR=/usr/bin
+
+#Directorio de bibliotecas
 LIB_DIR=/var/lib
 
-#Cargamos las variables
+#Carga de variables globales
 source $LIB_DIR/DTE-Admin-globals
 
-#Cargamos las funciones
+#Carga de funciones
 source $BIN_DIR/DTE-Admin-funciones
 
 
 ## Main ##
+
+# Se realizan las copias de seguridad
 make_backups
 
 local reboot=""
 
+#Configuración inicial
 if (_confirmacion "¿Desea cambiar el criterio de nombrado de las interfaces de red?\n"); then
 	
-	set_nombrado_interfaces "first_launcher"
+	set_nombrado_interfaces "first_launcher" #Criterio de nombrado de interfaces de red
 	
-	reboot="1"
+	reboot="1" #Reinicio posterior para aplicar los cambios
 	
 	if (_confirmacion "¿Desea configurar la red?\n"); then
 	
-		configurar_red "nocheck"
+		configurar_red "nocheck" #Configuración de las interfaces de red
 	fi
 fi
 
 if (_confirmacion "¿Desea activar el acceso root por SSH?"); then
 	
-	acceso_root_ssh
+	acceso_root_ssh #Acceso root por SSH
 fi
 
 if [ "$reboot" -eq 1 ]; then
 
 	_info "Finalizando instalación y reiniciando el equipo..."
-	(sleep 8 && reboot)&
+	(sleep 8 && reboot)& #Se reinicia el equipo dejando márgen para que acabe el proceso de instalación de paquetes
 
 else
 	_info "Finalizando instalación..."

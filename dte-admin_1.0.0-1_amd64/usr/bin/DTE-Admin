@@ -1,22 +1,27 @@
 #!/bin/bash
+#	DTE Admin
+# 	Pedro Requena <pf.requena@alumnos.upm.es>
 #
-# DTE Admin
-# Pedro Requena <pf.requena@alumnos.upm.es>
-#
+#	Script principal del DTE Admin
+#	Implementa el menú y el control de acceso
+
+#Directorio de binarios
 BIN_DIR=/usr/bin
+
+#Directorio de bibliotecas
 LIB_DIR=/var/lib
 
 
-#Cargamos las variables
+#Carga de variables globales
 source $LIB_DIR/DTE-Admin-globals
 
-#Cargamos las funciones
+#Carga de funciones
 source $BIN_DIR/DTE-Admin-funciones
 
 
-# Main #
+## Main ##
 
-# Check user
+# El acceso al programa debe ser con root
 	usuario=$(whoami 2> /dev/null)
 	if [ "$usuario" != "root" ]
 	then
@@ -24,9 +29,9 @@ source $BIN_DIR/DTE-Admin-funciones
 		exit 1
   	fi
 
+# Bucle principal del programa
 while true
 do
-#
 CHOICE=$(
 	whiptail --title "$TITULO" --menu "Seleccione una opción" 20 75 10\
 	"1)" "Instalar M23" \

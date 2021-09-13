@@ -1,6 +1,15 @@
 #!/bin/bash
-# DTE-Admin-uninstall
+#	DTE-Admin-uninstall
+# 	Pedro Requena <pf.requena@alumnos.upm.es>
+#
+# Script que se ejecuta al desinstalar el paquete DTE-Admin
+#
+#
+
+#Directorio de binarios
 BIN_DIR=/usr/bin
+
+#Directorio de bibliotecas
 LIB_DIR=/var/lib
 
 #Carga de variables globales
