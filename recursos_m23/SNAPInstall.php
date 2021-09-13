@@ -1,7 +1,7 @@
 <?PHP
 /*
 Description: Script para la instalación de paquetes snap.
-Priority: 50
+Priority: 26
 */
 
 
